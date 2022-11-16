@@ -1,0 +1,27 @@
+version: '3.4'
+
+services:
+  redis:
+    container_name: redismod
+    image: redislabs/redismod:latest
+    ports:
+      - '6379:6379'
+
+  grafana:
+    container_name: rsgrafana
+    image: grafana/grafana:latest
+    ports:
+      - '33000:3000'
+    environment:
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_BASIC_ENABLED=false
+      - GF_ENABLE_GZIP=true
+      - GF_USERS_DEFAULT_THEME=light
+      - GF_DEFAULT_APP_MODE=development
+      - GF_INSTALL_PLUGINS=redis-datasource
+    volumes:
+      - ./provisioning/datasources:/etc/grafana/provisioning/datasources
+      # Uncomment to preserve Grafana configuration
+      # - ./data:/var/lib/grafana
+
