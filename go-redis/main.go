@@ -4,11 +4,13 @@ import (
 	"log"
 	"strings"
 	"sync"
-
+	"encoding/json"
 	"github.com/tidwall/redcon"
+	"net/http"
+	_ "net/http/pprof" 
 )
 
-var addr = ":6380"
+var addr = ":6381"
 
 func main() {
 	var mu sync.RWMutex
@@ -16,11 +18,13 @@ func main() {
 	var ps redcon.PubSub
 	go log.Printf("started server at %s", addr)
 
-	err := redcon.ListenAndServe(addr,
+	go redcon.ListenAndServe(addr,
+	//err := redcon.ListenAndServe(addr,
 		func(conn redcon.Conn, cmd redcon.Command) {
 			switch strings.ToLower(string(cmd.Args[0])) {
 			default:
 				conn.WriteError("ERR unknown command '" + string(cmd.Args[0]) + "'")
+				log.Printf("ERR unknown command '" + string(cmd.Args[0]) + "'\n")
 			case "publish":
 				// Publish to all pub/sub subscribers and return the number of
 				// messages that were sent.
@@ -83,6 +87,40 @@ func main() {
 				} else {
 					conn.WriteBulk(val)
 				}
+			case "json.get":
+				log.Printf("command '" + string(cmd.Args[0]) + "'\n")
+				if len(cmd.Args) < 2 {
+					conn.WriteError("ERR wrong number of arguments for '" + string(cmd.Args[0]) + "' command")
+					return
+				}
+				log.Printf("key '" + string(cmd.Args[1]) + "'\n")
+				if len(cmd.Args) == 3 {	
+					log.Printf("path '" + string(cmd.Args[2]) + "'\n")
+				}
+				mu.RLock()
+				val, ok := items[string(cmd.Args[1])]
+				mu.RUnlock()
+				if !ok {
+					conn.WriteNull()
+				} else {
+					if (string(cmd.Args[2]) != "") {
+						var res map[string]interface{}
+						json.Unmarshal(val,&res)
+						data,ok := res[string(cmd.Args[2])]
+						if ok == false {
+							conn.WriteError("Not Found Path" + string(cmd.Args[2]))
+						}	
+						exval,err := json.Marshal(data)
+						if err != nil {
+							conn.WriteError("ERR Illegal Path" + string(cmd.Args[2]))
+						} else {
+							conn.WriteBulk(exval)
+						}
+					}else {
+						log.Printf("val:" + string(val) + "'\n")
+						conn.WriteBulk(val)
+					}
+				}
 			case "del":
 				if len(cmd.Args) != 2 {
 					conn.WriteError("ERR wrong number of arguments for '" + string(cmd.Args[0]) + "' command")
@@ -115,7 +153,10 @@ func main() {
 			// log.Printf("closed: %s, err: %v", conn.RemoteAddr(), err)
 		},
 	)
+	/*
 	if err != nil {
 		log.Fatal(err)
 	}
+	*/
+	http.ListenAndServe(":8880", nil)
 }

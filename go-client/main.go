@@ -19,7 +19,7 @@ type Message struct {
 
 func NewClient() (*redis.Client){
     rdb := redis.NewClient(&redis.Options{
-        Addr:     "localhost:6380",
+        Addr:     "localhost:6381",
         Password: "", // no password set
         DB:       0,  // use default DB
     })
@@ -74,7 +74,8 @@ func Subscribe(rdb *redis.Client,key string, value string) (error) {
 
 func main() {
 	client :=  NewClient()
-	msgdata := Message{ID:"1",Code:"0xFFFF",Payload:"Payload1"}
+	//msgdata := Message{ID:"1",Code:"0xFFFF",Payload:"Payload1"}
+	msgdata := []Message{{ID:"1",Code:"0xFFFF",Payload:"Payload1"},{ID:"2",Code:"0xEEEE",Payload:"Payload2"}}
 	jsonbin,_ := json.Marshal(msgdata)
 	//Publish(client,"Message",string(jsonbin))
 	Set(client,"Message",string(jsonbin))
